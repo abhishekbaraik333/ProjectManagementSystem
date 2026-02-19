@@ -1,0 +1,16 @@
+{
+  "name": "projectmanagementsystem",
+  "version": "1.0.0",
+  "description": "A project management system application",
+  "license": "ISC",
+  "author": "Abhishek",
+  "type": "module",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "start": "node index.js"
+  },
+  "devDependencies": {
+    "prettier": "3.8.1"
+  }
+}
