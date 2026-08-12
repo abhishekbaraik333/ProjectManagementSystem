@@ -20,6 +20,4 @@ router.route("/current-user").get(verifyJWT,getUser)
 router.route("/change-password").post(verifyJWT,changeCurrentPassword)
 router.route("/resend-email-verification").post(verifyJWT, resendEmailVerification)
 
-
-
 export default router;
