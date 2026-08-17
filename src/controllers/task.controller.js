@@ -17,7 +17,10 @@ const getTasks = asyncHandler(async(req,res) =>{
 
    const tasks =  await Task.find({
         project:new mongoose.Types.ObjectId(projectId)
-    }).populate("assignedTo", "avatar username fullName")
+    })
+    .populate("assignedTo", "avatar username fullName")
+    .populate("createdBy", "avatar username fullName")
+    .populate("lastMovedBy", "avatar username fullName")
 
     return res
     .status(200)
@@ -39,6 +42,42 @@ const getTaskById = asyncHandler(async(req,res) =>{
                 localField: "assignedTo",
                 foreignField:"_id",
                 as: "assignedTo",
+                pipeline:[
+                    {
+                        $project:{
+                            _id:1,
+                            username:1,
+                            fullName:1,
+                            avatar:1
+                        }
+                    }
+                ]
+            }
+        },
+        {
+            $lookup:{
+                from: "users",
+                localField: "createdBy",
+                foreignField:"_id",
+                as: "createdBy",
+                pipeline:[
+                    {
+                        $project:{
+                            _id:1,
+                            username:1,
+                            fullName:1,
+                            avatar:1
+                        }
+                    }
+                ]
+            }
+        },
+        {
+            $lookup:{
+                from: "users",
+                localField: "lastMovedBy",
+                foreignField:"_id",
+                as: "lastMovedBy",
                 pipeline:[
                     {
                         $project:{
@@ -91,6 +130,12 @@ const getTaskById = asyncHandler(async(req,res) =>{
             $addFields:{
                 assignedTo:{
                     $arrayElemAt:["$assignedTo", 0]
+                },
+                createdBy:{
+                    $arrayElemAt:["$createdBy", 0]
+                },
+                lastMovedBy:{
+                    $arrayElemAt:["$lastMovedBy", 0]
                 }
             }
         }
@@ -131,12 +176,17 @@ const createTask = asyncHandler(async(req,res) =>{
         assignedTo: assignedTo ? new mongoose.Types.ObjectId(assignedTo): undefined,
         status,
         assignedBy: new mongoose.Types.ObjectId(req.user._id),
+        createdBy: new mongoose.Types.ObjectId(req.user._id),
         attachments
     })
 
+    const populatedTask = await Task.findById(task._id)
+        .populate("assignedTo", "avatar username fullName")
+        .populate("createdBy", "avatar username fullName")
+
     return res
         .status(200)
-        .json(new ApiResponse(200,task, "Task created successfully"))
+        .json(new ApiResponse(200, populatedTask, "Task created successfully"))
 
 })
 
@@ -151,6 +201,15 @@ const updateTask = asyncHandler(async(req,res) =>{
     }
 
     const files = req.files || []
+    const isMember = req.user.role === userRolesEnum.MEMBER
+
+    // Members can only update task status (move tasks), not edit content/attachments
+    if (isMember) {
+        if (title || description || assignedTo || files.length > 0) {
+            throw new ApiError(403, "Members are only allowed to move task status")
+        }
+    }
+
     const newAttachments = files.map((file) =>{
         return {
             url: `${process.env.SERVER_URL}/images/${file.originalname}`,
@@ -159,21 +218,35 @@ const updateTask = asyncHandler(async(req,res) =>{
         }
     })
 
+    const isStatusChanging = status && status !== task.status
+
+    const updateFields = {
+        ...(title && !isMember && { title }),
+        ...(description !== undefined && !isMember && { description }),
+        ...(assignedTo && !isMember && { assignedTo: new mongoose.Types.ObjectId(assignedTo) }),
+        ...(status && { status }),
+        ...(isStatusChanging && {
+            lastMovedBy: new mongoose.Types.ObjectId(req.user._id),
+            lastMovedAt: new Date()
+        })
+    }
+
+    const updateQuery = {
+        $set: updateFields
+    }
+
+    if (newAttachments.length > 0 && !isMember) {
+        updateQuery.$push = { attachments: { $each: newAttachments } }
+    }
+
     const updatedTask = await Task.findByIdAndUpdate(
         taskId,
-        {
-            $set: {
-                ...(title && { title }),
-                ...(description && { description }),
-                ...(assignedTo && { assignedTo: new mongoose.Types.ObjectId(assignedTo) }),
-                ...(status && { status })
-            },
-            $push: {
-                attachments: { $each: newAttachments }
-            }
-        },
-        { new: true }
+        updateQuery,
+        { returnDocument: 'after', new: true }
     )
+    .populate("assignedTo", "avatar username fullName")
+    .populate("createdBy", "avatar username fullName")
+    .populate("lastMovedBy", "avatar username fullName")
 
     return res
         .status(200)

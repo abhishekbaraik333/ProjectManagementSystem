@@ -1,8 +1,15 @@
-import { useEffect } from 'react'
+import { useEffect, useState } from 'react'
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom'
 import HomePage from './pages/HomePage'
 import LoginPage from './pages/LoginPage'
 import RegisterPage from './pages/RegisterPage'
+import DashboardLayout from './components/layout/DashboardLayout'
+import ProjectListPage from './pages/dashboard/ProjectListPage'
+import ProjectBoardPage from './pages/dashboard/ProjectBoardPage'
+import MembersPage from './pages/dashboard/MembersPage'
+import NotesPage from './pages/dashboard/NotesPage'
+import ProjectSettingsPage from './pages/dashboard/ProjectSettingsPage'
+import CreateProjectModal from './components/CreateProjectModal'
 import useAuthStore from './store/authStore'
 import useThemeStore from './store/themeStore'
 
@@ -18,6 +25,7 @@ function GuestRoute({ children }) {
 
 export default function App() {
   const initTheme = useThemeStore((s) => s.initTheme)
+  const [createModalOpen, setCreateModalOpen] = useState(false)
 
   useEffect(() => {
     initTheme()
@@ -29,22 +37,31 @@ export default function App() {
         <Route path="/" element={<HomePage />} />
         <Route path="/login" element={<GuestRoute><LoginPage /></GuestRoute>} />
         <Route path="/register" element={<GuestRoute><RegisterPage /></GuestRoute>} />
-        {/* Dashboard route placeholder */}
+
+        {/* Dashboard routes */}
         <Route
           path="/dashboard"
           element={
             <ProtectedRoute>
-              <div className="min-h-screen bg-[#F8FAFC] flex items-center justify-center">
-                <div className="text-center">
-                  <h1 className="text-2xl font-bold text-slate-900">Dashboard coming soon!</h1>
-                  <p className="text-slate-500 mt-2">You are logged in successfully.</p>
-                </div>
-              </div>
+              <DashboardLayout onCreateProject={() => setCreateModalOpen(true)} />
             </ProtectedRoute>
           }
-        />
+        >
+          <Route index element={<ProjectListPage onCreateProject={() => setCreateModalOpen(true)} />} />
+          <Route path="project/:projectId" element={<ProjectBoardPage />} />
+          <Route path="project/:projectId/members" element={<MembersPage />} />
+          <Route path="project/:projectId/notes" element={<NotesPage />} />
+          <Route path="project/:projectId/settings" element={<ProjectSettingsPage />} />
+        </Route>
+
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>
+
+      {/* Global create project modal */}
+      <CreateProjectModal
+        open={createModalOpen}
+        onOpenChange={setCreateModalOpen}
+      />
     </BrowserRouter>
   )
 }

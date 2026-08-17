@@ -39,6 +39,7 @@ import authRouter from './routes/auth.router.js'
 import projectRouter from './routes/project.router.js'
 import taskRouter from './routes/task.router.js'
 import noteRouter from './routes/note.router.js'
+import { errorHandler } from './middlewares/error.middleware.js'
 
 app.use("/api/v1/healthcheck",healthCheckRouter)
 app.use("/api/v1/auth",authRouter)
@@ -49,3 +50,6 @@ app.use("/api/v1/notes",noteRouter)
 app.get("/",(req,res) =>{
     res.send("Hello World");
 })
+
+// Error handling middleware
+app.use(errorHandler);

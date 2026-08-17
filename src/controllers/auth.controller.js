@@ -88,13 +88,13 @@ const loginUser = asyncHandler(async (req, res) => {
   const user = await User.findOne({ email });
 
   if (!user) {
-    throw new ApiError(400, "User does not exist, please sign up");
+    throw new ApiError(400, "User does not exist. Please check your email or create an account.");
   }
 
   const isPasswordValid = await user.isPasswordCorrect(password);
 
   if (!isPasswordValid) {
-    throw new ApiError(400, "Invalid Password");
+    throw new ApiError(400, "Incorrect password. Please try again.");
   }
   const { accessToken, refreshToken } = await generateAccessAndRefreshTokens(
     user._id,

@@ -15,7 +15,7 @@ router.route("/:projectId")
 
 router.route("/:projectId/:taskId")
       .get(validateProjectPermission(AvailableUserRole), getTaskById)
-      .put(validateProjectPermission([userRolesEnum.ADMIN, userRolesEnum.PROJECT_ADMIN]),upload.array("attachments"), updateTaskValidator(), validate, updateTask)
+      .put(validateProjectPermission(AvailableUserRole), upload.array("attachments"), updateTaskValidator(), validate, updateTask)
       .delete(validateProjectPermission([userRolesEnum.ADMIN, userRolesEnum.PROJECT_ADMIN]), deleteTask)
 
 router.route("/:projectId/:taskId/subtasks")

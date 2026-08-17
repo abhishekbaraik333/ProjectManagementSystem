@@ -21,6 +21,17 @@ const taskSchema = new Schema ({
         type:Schema.Types.ObjectId,
         ref:"User"
     },
+    createdBy:{
+        type:Schema.Types.ObjectId,
+        ref:"User"
+    },
+    lastMovedBy:{
+        type:Schema.Types.ObjectId,
+        ref:"User"
+    },
+    lastMovedAt:{
+        type: Date
+    },
     status:{
         type:String,
         enum: taskStatusEnum,

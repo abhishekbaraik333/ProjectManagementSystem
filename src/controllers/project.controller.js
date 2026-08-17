@@ -17,15 +17,15 @@ const getProjects = asyncHandler(async (req, res) => {
     {
       $lookup: {
         from: "projects",
-        localField: "projects",
+        localField: "project",
         foreignField: "_id",
-        as: "projects",
+        as: "project",
         pipeline: [
           {
             $lookup: {
               from: "projectmembers",
               localField: "_id",
-              foreignField: "projects",
+              foreignField: "project",
               as: "projectmembers",
             },
           },
@@ -202,12 +202,13 @@ const getProjectMembers = asyncHandler(async (req, res) => {
             }
         },
         {
-            $project:1,
-            user:1,
-            role:1,
-            createdAt:1,
-            updatedAt:1,
-            _id:0
+            $project: {
+                user: 1,
+                role: 1,
+                createdAt: 1,
+                updatedAt: 1,
+                _id: 0
+            }
         }
     ])
 
@@ -221,29 +222,41 @@ const updateMemberRole = asyncHandler(async (req, res) => {
     const {newRole} = req.body
 
     if(!AvailableUserRole.includes(newRole)){
-        throw new ApiError(404,"Invalid Role")
+        throw new ApiError(400, "Invalid Role")
     }
 
     let projectMember = await ProjectMember.findOne({
-        project:new mongoose.Types.ObjectId(projectId),
-        user:new mongoose.Types.ObjectId(userId),
+        project: new mongoose.Types.ObjectId(projectId),
+        user: new mongoose.Types.ObjectId(userId),
     })
 
     if(!projectMember){
-        throw new ApiError(404,"Project member not found")
+        throw new ApiError(404, "Project member not found")
     }
 
-    projectMember = await ProjectMember.findByIdAndUpdate(projectMember._id,
+    // Project Admin cannot change an Admin's role
+    if (projectMember.role === userRolesEnum.ADMIN && req.user.role !== userRolesEnum.ADMIN) {
+        throw new ApiError(403, "Project admin cannot change an admin's role")
+    }
+
+    // Only Admin can promote members to Admin
+    if (newRole === userRolesEnum.ADMIN && req.user.role !== userRolesEnum.ADMIN) {
+        throw new ApiError(403, "Only an admin can assign the admin role")
+    }
+
+    projectMember = await ProjectMember.findByIdAndUpdate(
+        projectMember._id,
         {
             role: newRole
         },
         {
-            new:true
+            returnDocument: 'after',
+            new: true
         }
     )
 
     if(!projectMember){
-        throw new ApiError(404,"Project member not found")
+        throw new ApiError(404, "Project member not found")
     }
 
     return res
@@ -256,19 +269,23 @@ const deleteMember = asyncHandler(async (req, res) => {
     const {projectId, userId} = req.params
 
     let projectMember = await ProjectMember.findOne({
-        project:new mongoose.Types.ObjectId(projectId),
-        user:new mongoose.Types.ObjectId(userId),
+        project: new mongoose.Types.ObjectId(projectId),
+        user: new mongoose.Types.ObjectId(userId),
     })
 
     if(!projectMember){
-        throw new ApiError(404,"Project member not found")
+        throw new ApiError(404, "Project member not found")
     }
 
-    projectMember = await ProjectMember.findByIdAndDelete(projectMember._id
-    )
+    // Project Admin cannot delete/remove an Admin
+    if (projectMember.role === userRolesEnum.ADMIN && req.user.role !== userRolesEnum.ADMIN) {
+        throw new ApiError(403, "Project admin cannot remove an admin from the project")
+    }
+
+    projectMember = await ProjectMember.findByIdAndDelete(projectMember._id)
 
     if(!projectMember){
-        throw new ApiError(404,"Project member not found")
+        throw new ApiError(404, "Project member not found")
     }
 
     return res
